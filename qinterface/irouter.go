@@ -6,11 +6,11 @@ package qinterface
 */
 type IRouter interface {
 	// 在处理conn 业务之前的钩子方法 Hook
-	PreHandle(reques IRequest)
+	PreHandle(request IRequest)
 
 	// 在处理conn 业务 主方法 Hook
-	Handle(reques IRequest)
+	Handle(request IRequest)
 
 	// 在处理conn 业务之后的钩子方法 Hook
-	PostHandle(reques IRequest)
+	PostHandle(request IRequest)
 }

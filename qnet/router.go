@@ -8,11 +8,11 @@ import "QWServerEngine/qinterface"
 type BaseRouter struct {
 }
 
-func (b *BaseRouter) PreHandle(reques qinterface.IRequest) {
+func (b *BaseRouter) PreHandle(request qinterface.IRequest) {
 }
 
-func (b *BaseRouter) Handle(reques qinterface.IRequest) {
+func (b *BaseRouter) Handle(request qinterface.IRequest) {
 }
 
-func (b *BaseRouter) PostHandle(reques qinterface.IRequest) {
+func (b *BaseRouter) PostHandle(request qinterface.IRequest) {
 }
