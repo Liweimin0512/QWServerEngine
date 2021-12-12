@@ -103,7 +103,7 @@ func (s *Server) AddRouter(router qinterface.IRouter) {
 /*
   初始化server模块的方法
 */
-func Init(name string) qinterface.IServer {
+func NewServer(name string) qinterface.IServer {
 	s := &Server{
 		ServerName: utils.GlobalObject.Name,
 		IPVersion:  "tcp4",

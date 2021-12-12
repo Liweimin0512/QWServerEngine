@@ -43,7 +43,7 @@ func (b *PingRouter) PostHandle(request qinterface.IRequest) {
 */
 func main() {
 	//1 创建一个 server 句柄，使用QW的API
-	s := qnet.Init("MMO Game")
+	s := qnet.NewServer("MMO Game")
 	//2 添加router
 	s.AddRouter(&PingRouter{})
 	//3 启动服务器
