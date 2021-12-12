@@ -1,10 +1,10 @@
 package qnet
 
 import (
+	"QWServerEngine/qinterface"
 	"errors"
 	"fmt"
 	"net"
-	"QWServerEngine/qinterface"
 )
 
 // iServer接口实现，定义服务器模块
@@ -17,6 +17,9 @@ type Server struct {
 	IP string
 	// 服务器监听端口
 	Port int
+
+	// 当前的Server添加一个router, server 注册的链接对应的处理业务
+	Router qinterface.IRouter
 }
 
 /*
@@ -63,7 +66,7 @@ func (s *Server) Start() {
 			}
 
 			// 将处理新链接的业务方法 和 conn 进行绑定 得到我们的链接模块
-			dealConn := NewConnection(conn, cid, CallBackToClient)
+			dealConn := NewConnection(conn, cid, s.Router)
 			cid++
 
 			// 启动当前的链接业务处理
@@ -87,6 +90,11 @@ func (s *Server) Run() {
 	select {}
 }
 
+func (s *Server) AddRouter(router qinterface.IRouter) {
+	s.Router = router
+	fmt.Println("Add Router Success!!!")
+}
+
 /*
   初始化server模块的方法
 */
@@ -96,6 +104,7 @@ func Init(name string) qinterface.IServer {
 		IPVersion:  "tcp4",
 		IP:         "0.0.0.0",
 		Port:       8999,
+		Router:     nil,
 	}
 	return s
 }

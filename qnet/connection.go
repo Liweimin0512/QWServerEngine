@@ -1,9 +1,9 @@
 package qnet
 
 import (
+	"QWServerEngine/qinterface"
 	"fmt"
 	"net"
-	"QWServerEngine/qinterface"
 )
 
 /*
@@ -16,10 +16,11 @@ type Connection struct {
 	ConnID uint32
 	// 当前的链接状态
 	isClosed bool
-	// 当前链接所绑定的方法
-	handleAPI qinterface.HandleFunc
+
 	// 告知当前链接已经退出/停止的 channel
 	ExitChan chan bool
+	// 该链接处理的方法router
+	Router qinterface.IRouter
 }
 
 // 读业务
@@ -32,17 +33,26 @@ func (c *Connection) StartReader() {
 	for {
 		// 读取客户端数据到buf，最大512字节
 		buf := make([]byte, 512)
-		cnt, err := c.Conn.Read(buf)
+		_, err := c.Conn.Read(buf)
 		if err != nil {
 			fmt.Println("recv buf err", err)
 			continue
 		}
 
-		// 调用当前链接所绑定的HandleAPI
-		if err := c.handleAPI(c.Conn, buf, cnt); err != nil {
-			fmt.Println("ConnID", c.ConnID, "Handle is error", err)
-			break
+		// 得到当前conn数据的Request请求数据
+		req := Request{
+			conn: c,
+			data: buf,
 		}
+
+		// 执行注册的路由方法
+		go func(request qinterface.IRequest) {
+			c.Router.PreHandle(request)
+			c.Router.Handle(request)
+			c.Router.PostHandle(request)
+		}(&req)
+		// 从路由中，找到注册绑定的Conn对应的router调用
+
 	}
 }
 
@@ -51,7 +61,7 @@ func (c *Connection) StartWriter() {
 
 }
 
-func (c Connection) Start() {
+func (c *Connection) Start() {
 	fmt.Println("Conn Start()... ConnID = ", c.ConnID)
 	go c.StartReader()
 	// 启动从当前链接的读数据
@@ -59,7 +69,7 @@ func (c Connection) Start() {
 
 }
 
-func (c Connection) Stop() {
+func (c *Connection) Stop() {
 	fmt.Println("Conn Stop()... ConnID = ", c.ConnID)
 
 	// 如果当前链接已经关闭
@@ -75,30 +85,30 @@ func (c Connection) Stop() {
 	close(c.ExitChan)
 }
 
-func (c Connection) GetTCPConnection() *net.TCPConn {
+func (c *Connection) GetTCPConnection() *net.TCPConn {
 	return c.Conn
 }
 
-func (c Connection) GetConnID() uint32 {
+func (c *Connection) GetConnID() uint32 {
 	return c.ConnID
 }
 
-func (c Connection) GetRemoteAddr() net.Addr {
+func (c *Connection) GetRemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
-func (c Connection) Send(data []byte) error {
+func (c *Connection) Send(data []byte) error {
 	return nil
 }
 
 // 初始化链接模块的方法
-func NewConnection(conn *net.TCPConn, connID uint32, callback_api qinterface.HandleFunc) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, router qinterface.IRouter) *Connection {
 	c := &Connection{
-		Conn:      conn,
-		ConnID:    connID,
-		handleAPI: callback_api,
-		isClosed:  false,
-		ExitChan:  make(chan bool, 1),
+		Conn:     conn,
+		ConnID:   connID,
+		Router:   router,
+		isClosed: false,
+		ExitChan: make(chan bool, 1),
 	}
 	return c
 }
