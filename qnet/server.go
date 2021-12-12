@@ -2,6 +2,7 @@ package qnet
 
 import (
 	"QWServerEngine/qinterface"
+	"QWServerEngine/utils"
 	"errors"
 	"fmt"
 	"net"
@@ -36,7 +37,11 @@ func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
 }
 
 func (s *Server) Start() {
-	fmt.Printf("[Start] server Listenner at IP :%s, PORT %d , is starting\n", s.IP, s.Port)
+	fmt.Printf("[server Info] ServerName : %s , listenner at ip : %s, port: %d is starting \n",
+		utils.GlobalObject.Name, utils.GlobalObject.Host, utils.GlobalObject.TcpPort)
+	fmt.Printf("[server Info] ServerVersion : %s , Max Connention : %d, Max Packeet Size: %d \n",
+		utils.GlobalObject.Version, utils.GlobalObject.MaxConn, utils.GlobalObject.MaxPackageSize)
+	//fmt.Printf("[Start] server Listenner at IP :%s, PORT %d , is starting\n", s.IP, s.Port)
 
 	go func() {
 		// 获取TCP的Addr
@@ -100,10 +105,10 @@ func (s *Server) AddRouter(router qinterface.IRouter) {
 */
 func Init(name string) qinterface.IServer {
 	s := &Server{
-		ServerName: name,
+		ServerName: utils.GlobalObject.Name,
 		IPVersion:  "tcp4",
-		IP:         "0.0.0.0",
-		Port:       8999,
+		IP:         utils.GlobalObject.Host,
+		Port:       utils.GlobalObject.TcpPort,
 		Router:     nil,
 	}
 	return s
