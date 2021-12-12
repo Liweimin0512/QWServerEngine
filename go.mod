@@ -1,3 +1,3 @@
-module projectS
+module QWServerEngine
 
 go 1.13

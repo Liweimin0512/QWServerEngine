@@ -4,7 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"projectS/qinterface"
+	"QWServerEngine/qinterface"
 )
 
 // iServer接口实现，定义服务器模块

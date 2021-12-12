@@ -3,7 +3,7 @@ package qnet
 import (
 	"fmt"
 	"net"
-	"projectS/qinterface"
+	"QWServerEngine/qinterface"
 )
 
 /*
