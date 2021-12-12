@@ -1,6 +1,7 @@
 package qnet
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"projectS/qinterface"
@@ -16,6 +17,19 @@ type Server struct {
 	IP string
 	// 服务器监听端口
 	Port int
+}
+
+/*
+	TODO 定义当前客户端链接的所绑定的Handle API(暂时写死）
+*/
+func CallBackToClient(conn *net.TCPConn, data []byte, cnt int) error {
+	// 回显业务
+	fmt.Println("[Conn Handle] CallbackToClient ...")
+	if _, err := conn.Write(data[:cnt]); err != nil {
+		fmt.Println("write back buf err", err)
+		return errors.New("CallbackToClient error")
+	}
+	return nil
 }
 
 func (s *Server) Start() {
@@ -36,6 +50,9 @@ func (s *Server) Start() {
 		}
 
 		fmt.Println("start QWServer success, ", s.ServerName, " succ, Listenning ... ")
+		var cid uint32
+		cid = 0
+
 		// 阻塞等待客户端链接， 处理客户端链接业务(读写）
 		for {
 			// 如果有客户端链接，阻塞返回
@@ -45,24 +62,12 @@ func (s *Server) Start() {
 				continue
 			}
 
-			// 已经与客户端建立连接，处理业务逻辑
-			go func() {
-				for {
-					buf := make([]byte, 512)
-					cnt, err := conn.Read(buf)
-					if err != nil {
-						fmt.Println("recv buf err", err)
-						continue
-					}
-					fmt.Printf("recv client buf %s, cnt %d\n", buf, cnt)
-					// 回显功能
-					if _, err := conn.Write(buf[:cnt]); err != nil {
-						fmt.Println("write back buf err", err)
-						continue
-					}
-				}
-			}()
+			// 将处理新链接的业务方法 和 conn 进行绑定 得到我们的链接模块
+			dealConn := NewConnection(conn, cid, CallBackToClient)
+			cid++
 
+			// 启动当前的链接业务处理
+			go dealConn.Start()
 		}
 	}()
 }
