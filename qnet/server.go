@@ -19,7 +19,7 @@ type Server struct {
 }
 
 func (s *Server) Start() {
-	fmt.Println("[Start] server Listenner at IP :%s, PORT %d , is starting\n", s.IP, s.Port)
+	fmt.Printf("[Start] server Listenner at IP :%s, PORT %d , is starting\n", s.IP, s.Port)
 
 	go func() {
 		// 获取TCP的Addr
@@ -54,7 +54,7 @@ func (s *Server) Start() {
 						fmt.Println("recv buf err", err)
 						continue
 					}
-
+					fmt.Printf("recv client buf %s, cnt %d\n", buf, cnt)
 					// 回显功能
 					if _, err := conn.Write(buf[:cnt]); err != nil {
 						fmt.Println("write back buf err", err)
