@@ -53,5 +53,5 @@ func init() {
 		MaxPackageSize: 4096,
 	}
 	// 尝试从配置文件加载一些用户自定义参数
-	GlobalObject.Reload()
+	//GlobalObject.Reload()
 }

@@ -40,16 +40,16 @@ func (d DataPack) Unpack(binaryData []byte) (qinterface.IMessage, error) {
 
 	msg := &Message{}
 
-	if err := binary.Read(dataBuff, binary.LittleEndian, &msg.DataLen); err != nil {
+	if err := binary.Read(dataBuff, binary.LittleEndian, msg.GetMsgLen()); err != nil {
 		return nil, err
 	}
 
-	if err := binary.Read(dataBuff, binary.LittleEndian, &msg.ID); err != nil {
+	if err := binary.Read(dataBuff, binary.LittleEndian, msg.GetMsgID()); err != nil {
 		return nil, err
 	}
 
 	//TODO 判断是否已经超出我们允许的最大长度
-	if utils.GlobalObject.MaxPackageSize > 0 && msg.DataLen > utils.GlobalObject.MaxPackageSize {
+	if utils.GlobalObject.MaxPackageSize > 0 && msg.dataLen > utils.GlobalObject.MaxPackageSize {
 		return nil, errors.New("too Large message data recv!")
 	}
 

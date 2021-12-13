@@ -1,31 +1,31 @@
 package qnet
 
 type Message struct {
-	ID      uint32
-	DataLen uint32
-	Data    []byte
+	msgID   uint32
+	dataLen uint32
+	data    []byte
 }
 
 func (m *Message) GetMsgID() uint32 {
-	return m.ID
+	return m.msgID
 }
 
 func (m *Message) GetMsgLen() uint32 {
-	return m.DataLen
+	return m.dataLen
 }
 
 func (m *Message) GetMsgData() []byte {
-	return m.Data
+	return m.data
 }
 
 func (m *Message) SetMsgID(u uint32) {
-	m.ID = u
+	m.msgID = u
 }
 
 func (m *Message) SetMsgLen(u uint32) {
-	m.DataLen = u
+	m.dataLen = u
 }
 
 func (m *Message) SetMsgData(bytes []byte) {
-	m.Data = bytes
+	m.data = bytes
 }
