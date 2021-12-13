@@ -30,7 +30,7 @@ func (dp *DataPack) Pack(msg qinterface.IMessage) ([]byte, error) {
 	dataBuff := bytes.NewBuffer([]byte{})
 
 	//写dataLen
-	if err := binary.Write(dataBuff, binary.LittleEndian, msg.GetMsgData()); err != nil {
+	if err := binary.Write(dataBuff, binary.LittleEndian, msg.GetMsgLen()); err != nil {
 		return nil, err
 	}
 
@@ -56,17 +56,17 @@ func (dp *DataPack) Unpack(binaryData []byte) (qinterface.IMessage, error) {
 	msg := &Message{}
 
 	//读dataLen
-	if err := binary.Read(dataBuff, binary.LittleEndian, &msg.dataLen); err != nil {
+	if err := binary.Read(dataBuff, binary.LittleEndian, &msg.DataLen); err != nil {
 		return nil, err
 	}
 
 	//读msgID
-	if err := binary.Read(dataBuff, binary.LittleEndian, &msg.msgID); err != nil {
+	if err := binary.Read(dataBuff, binary.LittleEndian, &msg.ID); err != nil {
 		return nil, err
 	}
 
 	//判断dataLen的长度是否超出我们允许的最大包长度
-	if utils.GlobalObject.MaxPackageSize > 0 && msg.dataLen > utils.GlobalObject.MaxPackageSize {
+	if utils.GlobalObject.MaxPackageSize > 0 && msg.GetMsgLen() > utils.GlobalObject.MaxPackageSize {
 		return nil, errors.New("too large msg data received")
 	}
 

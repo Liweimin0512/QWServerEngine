@@ -49,16 +49,16 @@ func TestDataPack(t *testing.T) {
 					if msgHead.GetMsgLen() > 0 {
 						//msg 是有data数据的，需要再次读取data数据
 						msg := msgHead.(*Message)
-						msg.data = make([]byte, msg.GetMsgLen())
+						msg.Data = make([]byte, msg.GetMsgLen())
 
 						//根据dataLen从io中读取字节流
-						_, err := io.ReadFull(conn, msg.data)
+						_, err := io.ReadFull(conn, msg.Data)
 						if err != nil {
 							fmt.Println("server unpack data err:", err)
 							return
 						}
 
-						fmt.Println("==> Recv Msg: ID=", msg.msgID, ", len=", msg.dataLen, ", data=", string(msg.data))
+						fmt.Println("==> Recv Msg: ID=", msg.ID, ", len=", msg.DataLen, ", data=", string(msg.Data))
 					}
 				}
 			}(conn)
@@ -78,9 +78,9 @@ func TestDataPack(t *testing.T) {
 
 		//封装一个msg1包
 		msg1 := &Message{
-			msgID:   0,
-			dataLen: 5,
-			data:    []byte{'h', 'e', 'l', 'l', 'o'},
+			ID:      0,
+			DataLen: 5,
+			Data:    []byte{'h', 'e', 'l', 'l', 'o'},
 		}
 
 		sendData1, err := dp.Pack(msg1)
@@ -90,9 +90,9 @@ func TestDataPack(t *testing.T) {
 		}
 
 		msg2 := &Message{
-			msgID:   1,
-			dataLen: 7,
-			data:    []byte{'w', 'o', 'r', 'l', 'd', '!', '!'},
+			ID:      1,
+			DataLen: 7,
+			Data:    []byte{'w', 'o', 'r', 'l', 'd', '!', '!'},
 		}
 		sendData2, err := dp.Pack(msg2)
 		if err != nil {
