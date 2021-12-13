@@ -8,97 +8,106 @@ import (
 	"time"
 )
 
+// run in terminal:
+// go test -v ./znet -run=TestDataPack
+
+//只是负责测试datapack拆包，封包功能
 func TestDataPack(t *testing.T) {
-	// 创建socket TCP
-	listenner, err := net.Listen("tcp", "127.0.0.1:7777")
+	//创建socket TCP Server
+	listener, err := net.Listen("tcp", "127.0.0.1:7777")
 	if err != nil {
 		fmt.Println("server listen err:", err)
 		return
 	}
-	// 从客户端读取数据，拆包处理
+
+	//创建服务器gotoutine，负责从客户端goroutine读取粘包的数据，然后进行解析
 	go func() {
-		for true {
-			conn, err := listenner.Accept()
+		for {
+			conn, err := listener.Accept()
 			if err != nil {
-				fmt.Println("Server accept error", err)
+				fmt.Println("server accept err:", err)
 			}
 
+			//处理客户端请求
 			go func(conn net.Conn) {
-				// 处理客户端的请求
-				// ---------> 拆包的过程 <----------
+				//创建封包拆包对象dp
 				dp := NewDataPack()
-				for true {
+				for {
+					//1 先读出流中的head部分
 					headData := make([]byte, dp.GetHeadLen())
-					_, err := io.ReadFull(conn, headData)
+					_, err := io.ReadFull(conn, headData) //ReadFull 会把msg填充满为止
 					if err != nil {
 						fmt.Println("read head error")
-						break
 					}
-
+					//将headData字节流 拆包到msg中
 					msgHead, err := dp.Unpack(headData)
 					if err != nil {
-						fmt.Println("Server unpacke err", io.ErrUnexpectedEOF)
+						fmt.Println("server unpack err:", err)
 						return
 					}
-					if msgHead.GetMsgLen() > 0 {
-						// msg 有数据 需要进行第二次读取
-						msg := msgHead.(*Message)
-						msg.SetMsgData(make([]byte, msg.GetMsgLen()))
 
-						//根据datalen长度再次从io流读取
+					if msgHead.GetMsgLen() > 0 {
+						//msg 是有data数据的，需要再次读取data数据
+						msg := msgHead.(*Message)
+						msg.data = make([]byte, msg.GetMsgLen())
+
+						//根据dataLen从io中读取字节流
 						_, err := io.ReadFull(conn, msg.data)
 						if err != nil {
 							fmt.Println("server unpack data err:", err)
 							return
 						}
 
-						// 完整的一个消息已经读取完毕
-						fmt.Println("--> Recv MsgID:", msg.GetMsgID(), ", datalen = ", msg.GetMsgLen(), ", data = ", msg.GetMsgData())
+						fmt.Println("==> Recv Msg: ID=", msg.msgID, ", len=", msg.dataLen, ", data=", string(msg.data))
 					}
-
 				}
-
 			}(conn)
 		}
 	}()
 
-	// 模拟客户端连接
-	conn, err := net.Dial("tcp", "127.0.0.1:7777")
-	if err != nil {
-		fmt.Println("client dial err:", err)
-		return
-	}
+	//客户端goroutine，负责模拟粘包的数据，然后进行发送
+	go func() {
+		conn, err := net.Dial("tcp", "127.0.0.1:7777")
+		if err != nil {
+			fmt.Println("client dial err:", err)
+			return
+		}
 
-	dp := NewDataPack()
+		//创建一个封包对象 dp
+		dp := NewDataPack()
 
-	msg1 := &Message{
-		msgID:   1,
-		dataLen: 6,
-		data:    []byte{'s', 'e', 'r', 'v', 'e', 'r'},
-	}
+		//封装一个msg1包
+		msg1 := &Message{
+			msgID:   0,
+			dataLen: 5,
+			data:    []byte{'h', 'e', 'l', 'l', 'o'},
+		}
 
-	sendData1, err := dp.Pack(msg1)
-	if err != nil {
-		fmt.Println("client pack msg1 error", err)
-		return
-	}
+		sendData1, err := dp.Pack(msg1)
+		if err != nil {
+			fmt.Println("client pack msg1 err:", err)
+			return
+		}
 
-	msg2 := &Message{
-		msgID:   1,
-		dataLen: 5,
-		data:    []byte{'h', 'e', 'l', 'l', '0'},
-	}
+		msg2 := &Message{
+			msgID:   1,
+			dataLen: 7,
+			data:    []byte{'w', 'o', 'r', 'l', 'd', '!', '!'},
+		}
+		sendData2, err := dp.Pack(msg2)
+		if err != nil {
+			fmt.Println("client temp msg2 err:", err)
+			return
+		}
 
-	sendData2, err := dp.Pack(msg2)
-	if err != nil {
-		fmt.Println("client pack msg2 error", err)
-		return
-	}
+		//将sendData1，和 sendData2 拼接一起，组成粘包
+		sendData1 = append(sendData1, sendData2...)
 
-	sendData1 = append(sendData1, sendData2...)
-	conn.Write(sendData1)
+		//向服务器端写数据
+		conn.Write(sendData1)
+	}()
 
-	// 客户端阻塞
+	//客户端阻塞
 	select {
 	case <-time.After(time.Second):
 		return
