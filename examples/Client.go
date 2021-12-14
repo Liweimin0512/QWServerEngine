@@ -1,7 +1,9 @@
 package main
 
 import (
+	"QWServerEngine/qnet"
 	"fmt"
+	"io"
 	"net"
 	"time"
 )
@@ -18,20 +20,45 @@ func main() {
 		return
 	}
 	for {
-		_, err := conn.Write([]byte("Hello server v0.2..."))
+		// 发送封包消息 msgID = 0
+		dp := qnet.NewDataPack()
+		binaryMsg, err := dp.Pack(qnet.NewMessagePackage(0, []byte("v0.5 server client test message")))
 		if err != nil {
-			fmt.Println("write conn err", err)
+			fmt.Println("Pack error", err)
 			return
 		}
 
-		buf := make([]byte, 512)
-		cnt, err := conn.Read(buf)
-		if err != nil {
-			fmt.Println("read buf error")
+		if _, err := conn.Write(binaryMsg); err != nil{
+			fmt.Println("Write error", err)
 			return
 		}
+		// 服务器应该恢复msg数据，MsgID：1 pingpingping
 
-		fmt.Printf(" server call back:%s, cnt = %d\n", buf, cnt)
+		// 读取head 部分， 得到ID 和 dataLen
+		binaryHead := make([]byte, dp.GetHeadLen())
+		if _, err := io.ReadFull(conn, binaryHead);err != nil{
+			fmt.Println("read head error " , err)
+			break
+		}
+		// 拆包
+		msgHead, err := dp.Unpack(binaryHead)
+		if err != nil {
+			fmt.Println("client unpack msgHead error ", err)
+			break
+		}
+
+		if msgHead.GetMsgLen() > 0 {
+			// 根据DataLen进行第二次读取， 将data读出来
+			msg := msgHead.(*qnet.Message)
+			msg.Data = make([]byte, msg.GetMsgLen())
+
+			if _,err := io.ReadFull(conn, msg.Data); err != nil{
+				fmt.Println("read msg data error, " , err)
+				return
+			}
+
+			fmt.Println("--> Recv Server Msg : ID = ", msg.ID, "Len = " , msg.DataLen, " , data = ", string(msg.Data))
+		}
 
 		// cpu 阻塞
 		time.Sleep(1 * time.Second)

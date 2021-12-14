@@ -2,8 +2,9 @@ package qnet
 
 import (
 	"QWServerEngine/qinterface"
-	"QWServerEngine/utils"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 )
 
@@ -33,17 +34,44 @@ func (c *Connection) StartReader() {
 
 	for {
 		// 读取客户端数据到buf，最大512字节
-		buf := make([]byte, utils.GlobalObject.MaxPackageSize)
-		_, err := c.Conn.Read(buf)
-		if err != nil {
-			fmt.Println("recv buf err", err)
-			continue
+		//buf := make([]byte, utils.GlobalObject.MaxPackageSize)
+		//_, err := c.Conn.Read(buf)
+		//if err != nil {
+		//	fmt.Println("recv buf err", err)
+		//	continue
+		//}
+
+		// 创建一个拆包解包的对象
+		dp := NewDataPack()
+
+		// 得到Msg Head 二进制流的 8个字节
+		headData := make([]byte, dp.GetHeadLen())
+		if _, err := io.ReadFull(c.GetTCPConnection(), headData);err != nil{
+			fmt.Println("read msg head error", err)
+			return
 		}
 
-		// 得到当前conn数据的Request请求数据
+		// 拆包，得到msgID 和 msgDatalen 放在msg 消息中
+		msg, err :=dp.Unpack(headData)
+		if err != nil {
+			fmt.Println("unpack error", err)
+			return
+		}
+
+		// 根据dataLen 再次读取data， 放在 msg.data 中
+		var data []byte
+		if msg.GetMsgLen() >0 {
+			data = make([]byte, msg.GetMsgLen())
+			if _,err := io.ReadFull(c.GetTCPConnection(),data);err !=nil{
+				fmt.Println("read msg data error", err)
+				break
+			}
+		}
+		msg.SetMsgData(data)
+
 		req := Request{
 			conn: c,
-			data: buf,
+			msg: msg,
 		}
 
 		// 执行注册的路由方法
@@ -57,10 +85,7 @@ func (c *Connection) StartReader() {
 	}
 }
 
-// 写业务
-func (c *Connection) StartWriter() {
 
-}
 
 func (c *Connection) Start() {
 	fmt.Println("Conn Start()... ConnID = ", c.ConnID)
@@ -98,7 +123,27 @@ func (c *Connection) GetRemoteAddr() net.Addr {
 	return c.Conn.RemoteAddr()
 }
 
-func (c *Connection) Send(data []byte) error {
+// SendMsg 将我们要发送给客户端的数据先封包，再发送
+func (c *Connection) SendMsg(msgID uint32, data []byte) error {
+
+	if c.isClosed == true{
+		return  errors.New("Connection closed when send msg")
+	}
+	// 将data 进行封包 msgDataLen|MsgID|Data
+	dp := NewDataPack()
+
+	binaryMsg , err := dp.Pack(NewMessagePackage(msgID,data))
+	if err != nil {
+		fmt.Println("Pack error msg id = ", msgID)
+		return errors.New("Pack error msg")
+	}
+
+	// 将数据发送给客户端
+	if _, err := c.Conn.Write(binaryMsg);err != nil{
+		fmt.Println("write msg id", msgID, "error : " , err)
+		return errors.New("conn Write error")
+	}
+
 	return nil
 }
 

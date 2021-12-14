@@ -46,12 +46,12 @@ func init() {
 	// 未加载配置文件时的默认值
 	GlobalObject = &GlobalObj{
 		Name:           "QW Server APP",
-		Version:        "V0.4",
+		Version:        "V0.5",
 		TcpPort:        8999,
 		Host:           "0.0.0.0",
 		MaxConn:        1000,
 		MaxPackageSize: 4096,
 	}
 	// 尝试从配置文件加载一些用户自定义参数
-	//GlobalObject.Reload()
+	GlobalObject.Reload()
 }

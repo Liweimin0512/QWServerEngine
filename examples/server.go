@@ -11,30 +11,16 @@ type PingRouter struct {
 	qnet.BaseRouter
 }
 
-// Test PreHandle
-func (b *PingRouter) PreHandle(request qinterface.IRequest) {
-	fmt.Println("call Router PreHandle")
-	_, err := request.GetConnection().GetTCPConnection().Write([]byte("before ping ...\n"))
-	if err != nil {
-		fmt.Println("call back before ping error")
-	}
-}
-
 // Test Handle
 func (b *PingRouter) Handle(request qinterface.IRequest) {
 	fmt.Println("call Router Handle")
-	_, err := request.GetConnection().GetTCPConnection().Write([]byte("ping ...ping ...ping ...\n"))
-	if err != nil {
-		fmt.Println("call back ping ...ping ...ping ... error")
-	}
-}
+	// 先读取客户端的数据，再回写ping...ping...ping
+	fmt.Println("recv from client: msgID = ", request.GetMsgID(),
+		"data = ", string(request.GetData()))
 
-// Test PostHandle
-func (b *PingRouter) PostHandle(request qinterface.IRequest) {
-	fmt.Println("call Router PostHandle")
-	_, err := request.GetConnection().GetTCPConnection().Write([]byte("after ping...\n"))
+	err := request.GetConnection().SendMsg(1,[]byte("ping...ping...ping"))
 	if err != nil {
-		fmt.Println("call back after ping... error")
+		fmt.Println(err)
 	}
 }
 
