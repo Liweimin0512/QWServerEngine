@@ -21,8 +21,9 @@ type Connection struct {
 
 	// 告知当前链接已经退出/停止的 channel
 	ExitChan chan bool
-	// 该链接处理的方法router
-	Router qinterface.IRouter
+
+	// 消息的管理MsgID 和对应的处理业务API关系
+	MsgHandler qinterface.IMsgHandle
 }
 
 // 读业务
@@ -46,13 +47,13 @@ func (c *Connection) StartReader() {
 
 		// 得到Msg Head 二进制流的 8个字节
 		headData := make([]byte, dp.GetHeadLen())
-		if _, err := io.ReadFull(c.GetTCPConnection(), headData);err != nil{
+		if _, err := io.ReadFull(c.GetTCPConnection(), headData); err != nil {
 			fmt.Println("read msg head error", err)
 			return
 		}
 
 		// 拆包，得到msgID 和 msgDatalen 放在msg 消息中
-		msg, err :=dp.Unpack(headData)
+		msg, err := dp.Unpack(headData)
 		if err != nil {
 			fmt.Println("unpack error", err)
 			return
@@ -60,9 +61,9 @@ func (c *Connection) StartReader() {
 
 		// 根据dataLen 再次读取data， 放在 msg.data 中
 		var data []byte
-		if msg.GetMsgLen() >0 {
+		if msg.GetMsgLen() > 0 {
 			data = make([]byte, msg.GetMsgLen())
-			if _,err := io.ReadFull(c.GetTCPConnection(),data);err !=nil{
+			if _, err := io.ReadFull(c.GetTCPConnection(), data); err != nil {
 				fmt.Println("read msg data error", err)
 				break
 			}
@@ -71,21 +72,15 @@ func (c *Connection) StartReader() {
 
 		req := Request{
 			conn: c,
-			msg: msg,
+			msg:  msg,
 		}
 
 		// 执行注册的路由方法
-		go func(request qinterface.IRequest) {
-			c.Router.PreHandle(request)
-			c.Router.Handle(request)
-			c.Router.PostHandle(request)
-		}(&req)
-		// 从路由中，找到注册绑定的Conn对应的router调用
+		// 根据绑定好的MsgID 找到对应处理api业务执行
+		go c.MsgHandler.DoMsgHandler(&req)
 
 	}
 }
-
-
 
 func (c *Connection) Start() {
 	fmt.Println("Conn Start()... ConnID = ", c.ConnID)
@@ -126,21 +121,21 @@ func (c *Connection) GetRemoteAddr() net.Addr {
 // SendMsg 将我们要发送给客户端的数据先封包，再发送
 func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 
-	if c.isClosed == true{
-		return  errors.New("Connection closed when send msg")
+	if c.isClosed == true {
+		return errors.New("Connection closed when send msg")
 	}
 	// 将data 进行封包 msgDataLen|MsgID|Data
 	dp := NewDataPack()
 
-	binaryMsg , err := dp.Pack(NewMessagePackage(msgID,data))
+	binaryMsg, err := dp.Pack(NewMessagePackage(msgID, data))
 	if err != nil {
 		fmt.Println("Pack error msg id = ", msgID)
 		return errors.New("Pack error msg")
 	}
 
 	// 将数据发送给客户端
-	if _, err := c.Conn.Write(binaryMsg);err != nil{
-		fmt.Println("write msg id", msgID, "error : " , err)
+	if _, err := c.Conn.Write(binaryMsg); err != nil {
+		fmt.Println("write msg id", msgID, "error : ", err)
 		return errors.New("conn Write error")
 	}
 
@@ -148,13 +143,13 @@ func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 }
 
 // 初始化链接模块的方法
-func NewConnection(conn *net.TCPConn, connID uint32, router qinterface.IRouter) *Connection {
+func NewConnection(conn *net.TCPConn, connID uint32, handle qinterface.IMsgHandle) *Connection {
 	c := &Connection{
-		Conn:     conn,
-		ConnID:   connID,
-		Router:   router,
-		isClosed: false,
-		ExitChan: make(chan bool, 1),
+		Conn:       conn,
+		ConnID:     connID,
+		MsgHandler: handle,
+		isClosed:   false,
+		ExitChan:   make(chan bool, 1),
 	}
 	return c
 }
