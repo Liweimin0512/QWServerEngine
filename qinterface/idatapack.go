@@ -1,7 +1,7 @@
 package qinterface
 
 type IDataPack interface {
-	GetHeadLen() uint32
+	Unpack(binaryData []byte) (IMessage, error)
 	Pack(msg IMessage) ([]byte, error)
-	Unpack([]byte) (IMessage, error)
+	GetHeadLen() uint32
 }

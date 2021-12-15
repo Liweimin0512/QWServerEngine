@@ -28,7 +28,7 @@ var GlobalObject *GlobalObj
 
 func (g *GlobalObj) Reload() {
 	//data, err := ioutil.ReadFile("conf/serverConfig.json")
-	data, err := ioutil.ReadFile("conf/serverConfig.json")
+	data, err := ioutil.ReadFile("examples/conf/serverConfig.json")
 	if err != nil {
 		panic(err)
 	}
@@ -46,7 +46,7 @@ func init() {
 	// 未加载配置文件时的默认值
 	GlobalObject = &GlobalObj{
 		Name:           "QW Server APP",
-		Version:        "V0.4",
+		Version:        "V0.0",
 		TcpPort:        8999,
 		Host:           "0.0.0.0",
 		MaxConn:        1000,

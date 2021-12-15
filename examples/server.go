@@ -11,30 +11,34 @@ type PingRouter struct {
 	qnet.BaseRouter
 }
 
-// Test PreHandle
-func (b *PingRouter) PreHandle(request qinterface.IRequest) {
-	fmt.Println("call Router PreHandle")
-	_, err := request.GetConnection().GetTCPConnection().Write([]byte("before ping ...\n"))
-	if err != nil {
-		fmt.Println("call back before ping error")
-	}
+// hello test 自定义路由
+type HelloRouter struct {
+	qnet.BaseRouter
 }
 
 // Test Handle
 func (b *PingRouter) Handle(request qinterface.IRequest) {
 	fmt.Println("call Router Handle")
-	_, err := request.GetConnection().GetTCPConnection().Write([]byte("ping ...ping ...ping ...\n"))
+	// 先读取客户端的数据，再回写ping...ping...ping
+	fmt.Println("recv from client: msgID = ", request.GetMsgID(),
+		"data = ", string(request.GetData()))
+
+	err := request.GetConnection().SendMsg(200, []byte("ping...ping...ping"))
 	if err != nil {
-		fmt.Println("call back ping ...ping ...ping ... error")
+		fmt.Println(err)
 	}
 }
 
-// Test PostHandle
-func (b *PingRouter) PostHandle(request qinterface.IRequest) {
-	fmt.Println("call Router PostHandle")
-	_, err := request.GetConnection().GetTCPConnection().Write([]byte("after ping...\n"))
+// Test Handle
+func (b *HelloRouter) Handle(request qinterface.IRequest) {
+	fmt.Println("call Hello Router Handle...")
+	// 先读取客户端的数据，再回写ping...ping...ping
+	fmt.Println("recv from client: msgID = ", request.GetMsgID(),
+		"data = ", string(request.GetData()))
+
+	err := request.GetConnection().SendMsg(201, []byte("hello welcome to server game!!!"))
 	if err != nil {
-		fmt.Println("call back after ping... error")
+		fmt.Println(err)
 	}
 }
 
@@ -45,7 +49,9 @@ func main() {
 	//1 创建一个 server 句柄，使用QW的API
 	s := qnet.NewServer("MMO Game")
 	//2 添加router
-	s.AddRouter(&PingRouter{})
+	s.AddRouter(0, &PingRouter{})
+	s.AddRouter(1, &HelloRouter{})
+
 	//3 启动服务器
 	s.Run()
 }

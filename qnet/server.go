@@ -19,8 +19,7 @@ type Server struct {
 	// 服务器监听端口
 	Port int
 
-	// 当前的Server添加一个router, server 注册的链接对应的处理业务
-	Router qinterface.IRouter
+	MsgHandler qinterface.IMsgHandle
 }
 
 /*
@@ -71,7 +70,7 @@ func (s *Server) Start() {
 			}
 
 			// 将处理新链接的业务方法 和 conn 进行绑定 得到我们的链接模块
-			dealConn := NewConnection(conn, cid, s.Router)
+			dealConn := NewConnection(conn, cid, s.MsgHandler)
 			cid++
 
 			// 启动当前的链接业务处理
@@ -95,8 +94,8 @@ func (s *Server) Run() {
 	select {}
 }
 
-func (s *Server) AddRouter(router qinterface.IRouter) {
-	s.Router = router
+func (s *Server) AddRouter(msgID uint32, router qinterface.IRouter) {
+	s.MsgHandler.AddRouter(msgID, router)
 	fmt.Println("Add Router Success!!!")
 }
 
@@ -109,7 +108,7 @@ func NewServer(name string) qinterface.IServer {
 		IPVersion:  "tcp4",
 		IP:         utils.GlobalObject.Host,
 		Port:       utils.GlobalObject.TcpPort,
-		Router:     nil,
+		MsgHandler: NewMsgHandle(),
 	}
 	return s
 }
