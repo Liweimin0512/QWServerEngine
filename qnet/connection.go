@@ -2,6 +2,7 @@ package qnet
 
 import (
 	"QWServerEngine/qinterface"
+	"QWServerEngine/utils"
 	"errors"
 	"fmt"
 	"io"
@@ -22,15 +23,18 @@ type Connection struct {
 	// 告知当前链接已经退出/停止的 channel
 	ExitChan chan bool
 
+	// 无缓冲管道，用于读写Goroutine之间的消息通信
+	msgChan chan []byte
+
 	// 消息的管理MsgID 和对应的处理业务API关系
 	MsgHandler qinterface.IMsgHandle
 }
 
 // 读业务
 func (c *Connection) StartReader() {
-	fmt.Println("Reader Goroutine is running...")
+	fmt.Println("[Reader Goroutine is running!]")
 
-	defer fmt.Println("c.ConnID = ", c.ConnID, "Reader is exit, remote addr is ", c.GetRemoteAddr().String())
+	defer fmt.Println("[Reader is exit !] c.ConnID = ", c.ConnID, ", remote addr is ", c.GetRemoteAddr().String())
 	defer c.Stop()
 
 	for {
@@ -75,19 +79,44 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 
-		// 执行注册的路由方法
-		// 根据绑定好的MsgID 找到对应处理api业务执行
-		go c.MsgHandler.DoMsgHandler(&req)
+		// 判断当前是否开启工作池
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			c.MsgHandler.SendMsgToTaskQueue(&req)
+		}else{
+			// 执行注册的路由方法
+			// 根据绑定好的MsgID 找到对应处理api业务执行
+			go c.MsgHandler.DoMsgHandler(&req)
+		}
+	}
+}
 
+/*
+	写业务Goroutine, 专门给客户发消息的模块
+*/
+func (c *Connection) StartWriter() {
+	fmt.Println("[Writer Gortine is running!]")
+	defer fmt.Println(c.GetRemoteAddr().String(), " [conn Writer exit!]", c.GetRemoteAddr().String())
+
+	// 阻塞等待channel 的消息，进行写给客户端
+	for {
+		select {
+		case data := <-c.msgChan:
+			if _, err := c.Conn.Write(data); err != nil {
+				fmt.Println("Send data error, ", err, "Conn Writer exit!")
+			}
+		case <-c.ExitChan:
+			// 代表Reader已经退出
+			return
+		}
 	}
 }
 
 func (c *Connection) Start() {
 	fmt.Println("Conn Start()... ConnID = ", c.ConnID)
-	go c.StartReader()
 	// 启动从当前链接的读数据
-	// TODO 启动当前链接写数据业务
-
+	go c.StartReader()
+	// 启动当前链接写数据业务
+	go c.StartWriter()
 }
 
 func (c *Connection) Stop() {
@@ -102,8 +131,12 @@ func (c *Connection) Stop() {
 	// 关闭socket链接
 	c.Conn.Close()
 
+	// 通知 Writer模块 关闭
+	c.ExitChan <- true
+
 	// 回收资源
 	close(c.ExitChan)
+	close(c.msgChan)
 }
 
 func (c *Connection) GetTCPConnection() *net.TCPConn {
@@ -134,10 +167,11 @@ func (c *Connection) SendMsg(msgID uint32, data []byte) error {
 	}
 
 	// 将数据发送给客户端
-	if _, err := c.Conn.Write(binaryMsg); err != nil {
-		fmt.Println("write msg id", msgID, "error : ", err)
-		return errors.New("conn Write error")
-	}
+	//if _, err := c.Conn.Write(binaryMsg); err != nil {
+	//	fmt.Println("write msg id", msgID, "error : ", err)
+	//	return errors.New("conn Write error")
+	//}
+	c.msgChan <- binaryMsg
 
 	return nil
 }
@@ -150,6 +184,7 @@ func NewConnection(conn *net.TCPConn, connID uint32, handle qinterface.IMsgHandl
 		MsgHandler: handle,
 		isClosed:   false,
 		ExitChan:   make(chan bool, 1),
+		msgChan:    make(chan []byte),
 	}
 	return c
 }
