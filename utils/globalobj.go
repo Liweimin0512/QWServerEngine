@@ -19,6 +19,9 @@ type GlobalObj struct {
 	Version        string
 	MaxConn        int    // 当前服务器主机允许的最大连接数
 	MaxPackageSize uint32 // 当前框架数据包最大值
+
+	WorkerPoolSize uint32 // 当前业务worker池的goroutine数量
+	MaxWorkerTaskLen uint32 // 每个worker 对应的消息队列的任务的数量最大值
 }
 
 /*
@@ -51,6 +54,9 @@ func init() {
 		Host:           "0.0.0.0",
 		MaxConn:        1000,
 		MaxPackageSize: 4096,
+
+		WorkerPoolSize:10,
+		MaxWorkerTaskLen: 1024,
 	}
 	// 尝试从配置文件加载一些用户自定义参数
 	GlobalObject.Reload()

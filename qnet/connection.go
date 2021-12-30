@@ -2,6 +2,7 @@ package qnet
 
 import (
 	"QWServerEngine/qinterface"
+	"QWServerEngine/utils"
 	"errors"
 	"fmt"
 	"io"
@@ -78,10 +79,14 @@ func (c *Connection) StartReader() {
 			msg:  msg,
 		}
 
-		// 执行注册的路由方法
-		// 根据绑定好的MsgID 找到对应处理api业务执行
-		go c.MsgHandler.DoMsgHandler(&req)
-
+		// 判断当前是否开启工作池
+		if utils.GlobalObject.WorkerPoolSize > 0 {
+			c.MsgHandler.SendMsgToTaskQueue(&req)
+		}else{
+			// 执行注册的路由方法
+			// 根据绑定好的MsgID 找到对应处理api业务执行
+			go c.MsgHandler.DoMsgHandler(&req)
+		}
 	}
 }
 
